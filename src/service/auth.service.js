@@ -1,7 +1,6 @@
 const passport = require('passport')
 const jwt = require('jsonwebtoken')
 const { UserRepo } = require('../repositories')
-const { v4: uuidv4 } = require('uuid')
 const { sendMail } = require('../utils/helpers/mail.helper')
 require('dotenv').config(),
 
@@ -99,19 +98,12 @@ async function updateUser(userId, updates) {
   return UserRepo.updateById(userId, updates);
 }
 
-/**
- * Creates a new user with a generated UUID
- * 
- * @param {Object} userDetails - User data (e.g., name, email, password)
- * @returns {Promise<Object>} - Created user object
- */
+
+
 async function createUser(userDetails) {
-  const options = {
-    id: uuidv4(), // Generate unique user ID
-    ...userDetails
-  }
-  return UserRepo.create(options)
+  return UserRepo.create(userDetails);
 }
+
 
 /**
  * Sends an email to a user using a helper utility

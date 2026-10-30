@@ -66,8 +66,8 @@ async function authenticateUser(req, res, next) {
              * Fetch user based on token payload
              */
             const user = await verifyUser({
-                _id: verifiedAccessToken.value.id
-            })
+                id: verifiedAccessToken.value.id
+            });
 
             /**
              * Handle case where user no longer exists

@@ -1,3 +1,4 @@
+const { Op } = require("sequelize");
 const authService = require('../service/auth.service.js')
 const { sendLogs } = require('../utils/helpers/logs.helper.js')
 const { httpStatus } = require('../utils/helpers/variables.helper');
@@ -83,6 +84,7 @@ async function customLogin(req, res) {
     }
 }
 
+
 /**
  * Handles user sign-up authentication.
  *
@@ -119,13 +121,13 @@ async function customSignUp(req, res) {
         // CASE 1: Google user → set password
         if (existingUser && existingUser.googleId && !existingUser.password) {
             const updates = { password: hashedPassword };
-            await functionWrapper(authService.updateUser, [existingUser, updates], {
+            await functionWrapper(authService.updateUser, [existingUser.id, updates], {
                 customMessage: 'Service Error',
                 codePath: 'service.updateUser',
                 extras: updates,
             });
 
-            const payload = { id: existingUser._id, email: existingUser.email};
+            const payload = { id: existingUser.id, email: existingUser.email };
             const accessToken = await authService.generateAndSetUserTokens(payload);
 
             sendLogs(log, "info", {
@@ -164,7 +166,7 @@ async function customSignUp(req, res) {
         const newUser = await authService.createUser(userDetails)
 
         const payload = {
-            id: newUser._id,
+            id: newUser.id,
             email: newUser.email
         };
 
@@ -259,7 +261,7 @@ async function googleLoginCallback(req, res) {
 
             // JWT payload for authentication token
             const payload = {
-                id: newUser._id,
+                id: newUser.id,
                 email: newUser.email,
             };
 
@@ -298,7 +300,7 @@ async function googleLoginCallback(req, res) {
             // Save updates to database
             updatedUser = await functionWrapper(
                 authService.updateUser,
-                [user._id, updates],
+                [user.id, updates],
                 {
                     customMessage: "Service Error",
                     codePath: "service.updateUser",
@@ -380,20 +382,19 @@ async function sendResetlinkToEmail(req, res) {
         // Generate a secure random token (raw token sent to user via email)
         const resetToken = crypto.randomBytes(32).toString("hex");
 
-        /**
-         * Hash the token before storing in DB
-         * This prevents attackers from using DB leaks to reset passwords
-         */
-        user.resetPasswordToken = crypto
+
+
+        const resetPasswordToken = crypto
             .createHash("sha256")
             .update(resetToken)
             .digest("hex");
 
-        // Set token expiry to 15 minutes from now
-        user.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
+        const resetPasswordExpire = new Date(Date.now() + 15 * 60 * 1000);
 
-        // Save updated user document with reset token + expiration
-        await user.save();
+        await authService.updateUser(user.id, {
+            resetPasswordToken,
+            resetPasswordExpire,
+        });
 
         /**
          * Create password reset URL for frontend
@@ -449,9 +450,13 @@ async function customResetPassword(req, res) {
     try {
 
         const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-        const options = { resetPasswordToken: hashedToken, resetPasswordExpire: { $gt: Date.now() }}
+        const user = await authService.findUser({
+            resetPasswordToken: hashedToken,
+            resetPasswordExpire: {
+                [Op.gt]: new Date(),
+            },
+        });
 
-        const user = await authService.findUser(options)
             if (!user) {
                 return res.status(httpStatus.BAD_REQUEST.code).json({
                     success: false,
@@ -459,11 +464,18 @@ async function customResetPassword(req, res) {
                 });
             }
 
+
+
+
         const hashedPassword = await bcrypt.hash(password, 10);
-        user.password = hashedPassword;
-        user.resetPasswordToken = undefined;
-        user.resetPasswordExpire = undefined;
-        await user.save();
+
+        await authService.updateUser(user.id, {
+            password: hashedPassword,
+            resetPasswordToken: null,
+            resetPasswordExpire: null,
+        });
+
+
 
         sendLogs(log, 'info', { message: 'Password reset successful', fnc: 'customResetPassword', info: { user } })
         res.status(httpStatus.OK.code).json({ success: true })

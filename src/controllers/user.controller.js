@@ -31,12 +31,15 @@ async function getUserData(req, res) {
     const { user, log } = req;
 
     try {
-        /**
-         * Remove sensitive fields from the user object
-         * to prevent exposure in API response
-         */
-        const { password, resetPasswordToken, resetPasswordExpire, ...safeUser } =
-            req.user;
+
+
+        const {
+            password,
+            resetPasswordToken,
+            resetPasswordExpire,
+            ...safeUser
+        } = userData;
+
 
         // Send successful response with safe user data
         return res.status(200).json({

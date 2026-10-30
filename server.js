@@ -7,14 +7,14 @@ const authRoutes = require("./src/routes/auth.route.js");
 const userRoutes = require("./src/routes/user.route.js");
 const healthRoutes = require("./src/routes/health.route.js");
 const handlers = require('./src/utils/handlers.js');
-const connectMongo = require('./src/config/mongo.config.js');
+const { connectDatabase } = require("./src/config/database.config.js");
 const { authenticateUser } = require("./src/middlewares/access.middleware.js");
 const { globalLimiter } = require("./src/middlewares/rateLimit.middleware");
 const helmet = require("helmet");
 const hpp = require("hpp");
 
 const app = express();
-app.set("trust proxy", 1);
+app.set("trust proxy", 1); 2
 app.use(globalLimiter);
 app.use(pinoHttp({ logger }));
 
@@ -46,7 +46,7 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 5001;
 const startServer = async () => {
     try {
-        await connectMongo();
+        await connectDatabase();
 
         app.listen(PORT, () => {
             console.log(`This app API is currently running on port ${PORT}`);

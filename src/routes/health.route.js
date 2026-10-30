@@ -1,54 +1,37 @@
+
 const express = require('express');
 const router = express.Router();
-const connectMongo = require('../config/mongo.config');
+const { sequelize } = require('../config/database.config');
 
 /**
  * @route   GET /
- * @desc    Health check endpoint for the application
- * 
- * Purpose:
- * - Verifies that the server is running
- * - Confirms MongoDB connection is successful
- * - Returns basic API status information
- * 
- * Response (Success):
- * - status: 200
- * - message: API is running
- * - baseUrl: Application base URL
- * - status: "live"
- * 
- * Response (Failure):
- * - status: 500
- * - message: Health check failed
- * - error: Error details
+ * @desc    Health check endpoint
+ *
+ * Checks:
+ * - Whether the API is running
+ * - Whether PostgreSQL is accessible
  */
 router.get('/', async (req, res) => {
     try {
-        /**
-         * Attempt to establish MongoDB connection
-         * Used here as part of the health check validation
-         */
-        await connectMongo();
-        console.log("MongoDB connected (health check)");
+        // Verify PostgreSQL connection
+        await sequelize.authenticate();
 
-        /**
-         * Successful health check response
-         */
+        console.log("PostgreSQL connected (health check)");
+
         res.status(200).json({
-            message: "This app API is currently running on port",
+            message: "This app API is currently running",
             baseUrl: "YOUR_APP_LIVE_URL",
+            database: "PostgreSQL",
             status: "live"
         });
+
     } catch (error) {
-        /**
-         * Handle health check failure
-         */
         console.error('Health check failed:', error);
 
         res.status(500).json({
             status: 'error',
             message: 'Health check failed',
-            error
+            error: error.message
         });
     }
 });
